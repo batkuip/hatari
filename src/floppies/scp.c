@@ -19,7 +19,7 @@ const char floppy_scp_fileid[] = "Hatari floppy_scp.c";
 #include "file.h"
 #include "floppy.h"
 #include "fdc.h"
-#include "floppy_scp.h"
+#include "floppies/scp.h"
 #include "log.h"
 #include "memorySnapShot.h"
 #include "screen.h"

@@ -26,7 +26,7 @@ const char ST_fileid[] = "Hatari st.c";
 #include "main.h"
 #include "file.h"
 #include "floppy.h"
-#include "st.h"
+#include "floppies/st.h"
 
 #define SAVE_TO_ST_IMAGES
 

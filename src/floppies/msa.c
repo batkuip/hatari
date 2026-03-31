@@ -11,7 +11,7 @@ const char MSA_fileid[] = "Hatari msa.c";
 #include "main.h"
 #include "file.h"
 #include "floppy.h"
-#include "msa.h"
+#include "floppies/msa.h"
 
 #include "sysdeps.h"
 #include "maccess.h"

@@ -15,7 +15,7 @@ const char DIM_fileid[] = "Hatari dim.c";
 
 #include "file.h"
 #include "floppy.h"
-#include "dim.h"
+#include "floppies/dim.h"
 
 #undef SAVE_TO_DIM_IMAGES
 
