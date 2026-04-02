@@ -1,4 +1,5 @@
-Hatari CPU profile (Hatari v2.6.1)
+Hatari CPU profile (Hatari v2.6.1-devel (Apr  2 2026))
+Machine:	8MHz/030(CED)/-/MMU 1MB ST(WS3), TOS 0.00, RGB 60 Hz
 Cycles/second:	8021247
 Field names:	Executed instructions, Used cycles, Instruction cache misses, Data cache hits
 Field regexp:	^\$?([0-9A-Fa-f]+) .*% \(([^)]*)\)$
