@@ -1518,6 +1518,9 @@ int Configuration_SetInfoString(char *buffer, int len)
 	}
 
 	*end++ = '\0';
+
+	assert((end -buffer) < len);
+
 	return end - buffer;
 }
 

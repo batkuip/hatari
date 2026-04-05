@@ -562,8 +562,7 @@ void Statusbar_UpdateInfo(void)
 	char buffer[200];		/* large enough for any message */
 	int size = sizeof(buffer);
 
-	int len = Configuration_SetInfoString(buffer, size);
-	assert(len < size);
+	Configuration_SetInfoString(buffer, size);
 
 	Str_Copy(DefaultMessage.msg, buffer, MAX_MESSAGE_LEN);
 	DEBUGPRINT(("Set default message: '%s'\n", DefaultMessage.msg));

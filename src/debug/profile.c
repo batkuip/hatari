@@ -697,7 +697,7 @@ static bool Profile_Save(const char *fname, bool bForDsp)
 	uint32_t freq;
 	const char *proc;
 	char machine[200];
-	int len, size = sizeof(machine);
+	int size = sizeof(machine);
 
 	if (!(out = fopen(fname, "w"))) {
 		fprintf(stderr, "ERROR: opening '%s' for writing failed!\n", fname);
@@ -711,8 +711,7 @@ static bool Profile_Save(const char *fname, bool bForDsp)
 		freq = MachineClocks.CPU_Freq_Emul;
 		proc = "CPU";
 	}
-	len = Configuration_SetInfoString(machine, size);
-	assert(len < size);
+	Configuration_SetInfoString(machine, size);
 
 	fprintf(out, "Hatari %s profile (%s)\n", proc, PROG_NAME);
 	fprintf(out, "Machine:\t%s\n", machine);
