@@ -207,6 +207,9 @@ static bool PsgCapturePrgStarted;
 static uint32_t PsgCapturePrgTextStart;
 static uint32_t PsgCapturePrgEnd;
 static FILE *PsgCaptureFile;
+static uint64_t PSG_InstrPrevClock;
+static int PSG_InstrAccesses;
+static int PSG_InstrWaitCycles;
 
 
 /*-----------------------------------------------------------------------*/
@@ -236,15 +239,16 @@ static FILE *PSG_CaptureGetFile(void)
 	PsgCaptureFile = File_Open(filename, "w");
 	if (PsgCaptureFile)
 	{
-		fprintf(PsgCaptureFile, "# Hatari PSG register capture v1\n");
-		fprintf(PsgCaptureFile, "# clock,reg,value,pc,in_timer,timer,timer_freq\n");
+		fprintf(PsgCaptureFile, "# Hatari PSG register capture v2\n");
+		fprintf(PsgCaptureFile, "# clock includes PSG wait states; raw_clock excludes psg_wait_cycles\n");
+		fprintf(PsgCaptureFile, "# clock,reg,value,pc,in_timer,timer,timer_freq,raw_clock,psg_wait_cycles\n");
 		atexit(PSG_CaptureClose);
 	}
 
 	return PsgCaptureFile;
 }
 
-static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
+static void PSG_CaptureWrite(uint64_t clock, uint64_t raw_clock, uint8_t reg, uint8_t value)
 {
 	FILE *fp;
 	const char *timer_name;
@@ -268,9 +272,10 @@ static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
 		return;
 
 	in_timer = MFP_GetCurrentTimerInfo(&timer_name, &timer_freq);
-	fprintf(fp, "%llu,%u,%u,0x%x,%u,%s,%u\n",
+	fprintf(fp, "%llu,%u,%u,0x%x,%u,%s,%u,%llu,%d\n",
 		(unsigned long long)clock, reg, value, M68000_GetPC(),
-		in_timer ? 1 : 0, timer_name, timer_freq);
+		in_timer ? 1 : 0, timer_name, timer_freq,
+		(unsigned long long)raw_clock, PSG_InstrWaitCycles);
 }
 
 void PSG_CaptureOnPrgStart(uint32_t textStart, uint32_t prgEnd)
@@ -302,6 +307,9 @@ void PSG_Reset(void)
 	PsgCapturePrgStarted = false;
 	PsgCapturePrgTextStart = 0;
 	PsgCapturePrgEnd = 0;
+	PSG_InstrPrevClock = 0;
+	PSG_InstrAccesses = 0;
+	PSG_InstrWaitCycles = 0;
 	memset(PSGRegisters, 0, sizeof(PSGRegisters));
 	PSGRegisters[PSG_REG_IO_PORTA] = 0xff;			/* no drive selected + side 0 after a reset */
 
@@ -408,6 +416,7 @@ void PSG_Set_DataRegister(uint8_t val)
 {
 	uint8_t	val_old;
 	uint64_t WriteClock;
+	uint64_t RawWriteClock;
 
 	if (LOG_TRACE_LEVEL(TRACE_PSG_WRITE))
 	{
@@ -424,6 +433,7 @@ void PSG_Set_DataRegister(uint8_t val)
 
 	/* Create samples up until this point with current values */
 	WriteClock = Cycles_GetClockCounterOnWriteAccess();
+	RawWriteClock = WriteClock >= (uint64_t)PSG_InstrWaitCycles ? WriteClock - PSG_InstrWaitCycles : 0;
 	Sound_Update ( WriteClock );
 
 	/* When a read is made from $ff8800 without changing PSGRegisterSelect, we should return */
@@ -450,7 +460,7 @@ void PSG_Set_DataRegister(uint8_t val)
 	{
 		/* Copy sound related registers 0..13 to the sound module's internal buffer */
 		Sound_WriteReg ( PSGRegisterSelect , PSGRegisters[PSGRegisterSelect] );
-		PSG_CaptureWrite ( WriteClock , PSGRegisterSelect , PSGRegisters[PSGRegisterSelect] );
+		PSG_CaptureWrite ( WriteClock , RawWriteClock , PSGRegisterSelect , PSGRegisters[PSGRegisterSelect] );
 	}
 
 	else if ( PSGRegisterSelect == PSG_REG_IO_PORTA )
@@ -565,23 +575,24 @@ static void PSG_WaitState(void)
 #if 0
 	M68000_WaitState(1);				/* [NP] FIXME not 100% accurate, but gives good results */
 #else
-	static uint64_t	PSG_InstrPrevClock;
-	static int	NbrAccesses;
-
 	if ( PSG_InstrPrevClock != CyclesGlobalClockCounter )	/* New instruction accessing YM2149 : add 4 cycles */
 	{
 		M68000_WaitState ( 4 );
 		PSG_InstrPrevClock = CyclesGlobalClockCounter;
-		NbrAccesses = 0;
+		PSG_InstrAccesses = 0;
+		PSG_InstrWaitCycles = 4;
 	}
 
 	else							/* Same instruction doing several accesses : only movem can add more cycles */
 	{
 		if ( ( OpcodeFamily == i_MVMEL ) || ( OpcodeFamily == i_MVMLE ) )
 		{
-			NbrAccesses += 1;
-			if ( NbrAccesses % 4 == 0 )		/* Add 4 extra cycles every 4th access */
+			PSG_InstrAccesses += 1;
+			if ( PSG_InstrAccesses % 4 == 0 )	/* Add 4 extra cycles every 4th access */
+			{
 				M68000_WaitState ( 4 );
+				PSG_InstrWaitCycles += 4;
+			}
 		}
 	}
 
