@@ -35,6 +35,7 @@ extern uint8_t PSGRegisters[MAX_PSG_REGISTERS];
 
 extern void PSG_Reset(void);
 extern void PSG_MemorySnapShot_Capture(bool bSave);
+extern void PSG_CaptureOnPrgStart(uint32_t textStart, uint32_t prgEnd);
 
 extern void PSG_Set_SelectRegister(uint8_t val);
 extern uint8_t PSG_Get_DataRegister(void);

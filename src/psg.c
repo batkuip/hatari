@@ -203,6 +203,9 @@ uint8_t PSGRegisters[MAX_PSG_REGISTERS];	/* Registers in PSG, see PSG_REG_xxxx *
 static unsigned int LastStrobe=0; /* Falling edge of Strobe used for printer */
 
 static bool PsgCaptureChecked;
+static bool PsgCapturePrgStarted;
+static uint32_t PsgCapturePrgTextStart;
+static uint32_t PsgCapturePrgEnd;
 static FILE *PsgCaptureFile;
 
 
@@ -243,11 +246,24 @@ static FILE *PSG_CaptureGetFile(void)
 
 static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
 {
-	FILE *fp = PSG_CaptureGetFile();
+	FILE *fp;
 	const char *timer_name;
 	uint32_t timer_freq;
 	bool in_timer;
 
+	if (!PsgCapturePrgStarted)
+	{
+		uint32_t pc = M68000_GetPC();
+		if (!PsgCapturePrgTextStart || pc < PsgCapturePrgTextStart || pc >= PsgCapturePrgEnd)
+			return;
+
+		in_timer = MFP_GetCurrentTimerInfo(&timer_name, &timer_freq);
+		if (in_timer && !timer_freq)
+			return;
+		PsgCapturePrgStarted = true;
+	}
+
+	fp = PSG_CaptureGetFile();
 	if (!fp)
 		return;
 
@@ -255,6 +271,13 @@ static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
 	fprintf(fp, "%llu,%u,%u,0x%x,%u,%s,%u\n",
 		(unsigned long long)clock, reg, value, M68000_GetPC(),
 		in_timer ? 1 : 0, timer_name, timer_freq);
+}
+
+void PSG_CaptureOnPrgStart(uint32_t textStart, uint32_t prgEnd)
+{
+	PsgCapturePrgStarted = false;
+	PsgCapturePrgTextStart = textStart;
+	PsgCapturePrgEnd = prgEnd;
 }
 
 
@@ -276,6 +299,9 @@ void PSG_Reset(void)
 
 	PSGRegisterSelect = 0;
 	PSGRegisterReadData = 0;
+	PsgCapturePrgStarted = false;
+	PsgCapturePrgTextStart = 0;
+	PsgCapturePrgEnd = 0;
 	memset(PSGRegisters, 0, sizeof(PSGRegisters));
 	PSGRegisters[PSG_REG_IO_PORTA] = 0xff;			/* no drive selected + side 0 after a reset */
 

@@ -33,6 +33,7 @@ const char TOS_fileid[] = "Hatari tos.c";
 #include "str.h"
 #include "symbols.h"
 #include "tos.h"
+#include "psg.h"
 #include "lilo.h"
 #include "vdi.h"
 #include "falcon/dsp.h"
@@ -1273,6 +1274,7 @@ int TOS_InitImage(void)
 			{
 				Main_ErrorExit("Failed to load:", psTestPrg, 1);
 			}
+			PSG_CaptureOnPrgStart(offsets[0], dummy);
 		}
 		else
 		{

@@ -58,6 +58,7 @@ const char Gemdos_fileid[] = "Hatari gemdos.c";
 #include "m68000.h"
 #include "memorySnapShot.h"
 #include "printer.h"
+#include "psg.h"
 #include "statusbar.h"
 #include "scandir.h"
 #include "stMemory.h"
@@ -4602,6 +4603,9 @@ void GemDOS_PexecBpCreated(void)
 
 		/* do user-configured program exec "event" actions */
 		Event_DoPrgExecActions();
+
+		/* start PSG capture only once the CPU reaches the PRG itself */
+		PSG_CaptureOnPrgStart(offsets[0], bssEnd);
 	}
 	else
 	{
