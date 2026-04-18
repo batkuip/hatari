@@ -36,6 +36,7 @@ doc/doxygen/html
 
 # These are for XCode on Mac OS X:
 build/*
+build-osx/*
 Hatari.build/*
 Release/*
 Debug/*
