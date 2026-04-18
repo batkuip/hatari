@@ -4,6 +4,7 @@ brew-prefix := `brew --prefix`
 tos := justfile_directory() / "src/tos.img"
 gemdos-hd := env_var("HOME") / "Projects/Atari/Harddisk"
 hatari-app := justfile_directory() / build-dir / "src/Hatari.app"
+hatari-bin := hatari-app / "Contents/MacOS/Hatari"
 
 default: build
 
@@ -25,3 +26,6 @@ clean:
 
 run args="":
 	open -n "{{hatari-app}}" --args --tos "{{tos}}" --memsize 4 --drive-b off --fastfdc on --harddrive "{{gemdos-hd}}" --gemdos-drive skip --fast-boot on --tos-res stmed --fast-forward boot:on --fast-forward inf:off {{args}}
+
+capture output="/tmp/hatari-psg-capture.csv" args="":
+	HATARI_PSG_CAPTURE="{{output}}" "{{hatari-bin}}" --tos "{{tos}}" --memsize 4 --drive-b off --fastfdc on --harddrive "{{gemdos-hd}}" --gemdos-drive skip --fast-boot on --tos-res stmed --fast-forward boot:on --fast-forward inf:off --debug-except none --symload off {{args}}

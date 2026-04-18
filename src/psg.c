@@ -176,6 +176,8 @@ const char PSG_fileid[] = "Hatari psg.c";
 
 #include "main.h"
 #include "configuration.h"
+#include "cycles.h"
+#include "file.h"
 #include "ioMem.h"
 #include "joy.h"
 #include "log.h"
@@ -199,6 +201,56 @@ static uint8_t PSGRegisterReadData;		/* Value returned when reading from 0xff880
 uint8_t PSGRegisters[MAX_PSG_REGISTERS];	/* Registers in PSG, see PSG_REG_xxxx */
 
 static unsigned int LastStrobe=0; /* Falling edge of Strobe used for printer */
+
+static bool PsgCaptureChecked;
+static FILE *PsgCaptureFile;
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Hacky POC YM register capture for external replay tools.
+ *
+ * Enable with:
+ *   HATARI_PSG_CAPTURE=/tmp/hatari-psg.csv hatari ...
+ */
+static void PSG_CaptureClose(void)
+{
+	PsgCaptureFile = File_Close(PsgCaptureFile);
+}
+
+static FILE *PSG_CaptureGetFile(void)
+{
+	const char *filename;
+
+	if (PsgCaptureChecked)
+		return PsgCaptureFile;
+
+	PsgCaptureChecked = true;
+	filename = getenv("HATARI_PSG_CAPTURE");
+	if (!filename || !filename[0])
+		return NULL;
+
+	PsgCaptureFile = File_Open(filename, "w");
+	if (PsgCaptureFile)
+	{
+		fprintf(PsgCaptureFile, "# Hatari PSG register capture v0\n");
+		fprintf(PsgCaptureFile, "# clock,reg,value,pc\n");
+		atexit(PSG_CaptureClose);
+	}
+
+	return PsgCaptureFile;
+}
+
+static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
+{
+	FILE *fp = PSG_CaptureGetFile();
+
+	if (!fp)
+		return;
+
+	fprintf(fp, "%llu,%u,%u,0x%x\n",
+		(unsigned long long)clock, reg, value, M68000_GetPC());
+}
 
 
 /*-----------------------------------------------------------------------*/
@@ -324,6 +376,7 @@ uint8_t PSG_Get_DataRegister(void)
 void PSG_Set_DataRegister(uint8_t val)
 {
 	uint8_t	val_old;
+	uint64_t WriteClock;
 
 	if (LOG_TRACE_LEVEL(TRACE_PSG_WRITE))
 	{
@@ -339,7 +392,8 @@ void PSG_Set_DataRegister(uint8_t val)
 		return;					/* not valid, ignore write and do nothing */
 
 	/* Create samples up until this point with current values */
-	Sound_Update ( Cycles_GetClockCounterOnWriteAccess() );
+	WriteClock = Cycles_GetClockCounterOnWriteAccess();
+	Sound_Update ( WriteClock );
 
 	/* When a read is made from $ff8800 without changing PSGRegisterSelect, we should return */
 	/* the non masked value. */
@@ -365,6 +419,7 @@ void PSG_Set_DataRegister(uint8_t val)
 	{
 		/* Copy sound related registers 0..13 to the sound module's internal buffer */
 		Sound_WriteReg ( PSGRegisterSelect , PSGRegisters[PSGRegisterSelect] );
+		PSG_CaptureWrite ( WriteClock , PSGRegisterSelect , PSGRegisters[PSGRegisterSelect] );
 	}
 
 	else if ( PSGRegisterSelect == PSG_REG_IO_PORTA )
