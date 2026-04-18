@@ -29,3 +29,6 @@ run args="":
 
 capture output="/tmp/hatari-psg-capture.csv" args="":
 	HATARI_PSG_CAPTURE="{{output}}" "{{hatari-bin}}" --tos "{{tos}}" --memsize 4 --drive-b off --fastfdc on --harddrive "{{gemdos-hd}}" --gemdos-drive skip --fast-boot on --tos-res stmed --fast-forward boot:on --fast-forward inf:off --debug-except none --symload off {{args}}
+
+capture-prg prg output="/tmp/hatari-psg-capture.csv" args="":
+	HATARI_PSG_CAPTURE="{{output}}" "{{hatari-bin}}" --tos "{{tos}}" --memsize 4 --drive-b off --fastfdc on --harddrive "{{gemdos-hd}}" --gemdos-drive skip --fast-boot on --tos-res stmed --fast-forward boot:on --fast-forward inf:off --debug-except none --symload off {{args}} "{{prg}}"
