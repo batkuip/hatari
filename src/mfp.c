@@ -667,6 +667,96 @@ static uint8_t	MFP_ConvertIntNumber ( MFP_STRUCT *pMFP , int16_t Interrupt , uin
 }
 
 
+/*-----------------------------------------------------------------------*/
+/**
+ * Get the MFP timer interrupt currently being serviced by the CPU.
+ * This is mainly for diagnostic captures: software EOI mode is reported from
+ * ISR bits, and auto EOI mode falls back to the last acknowledged level 6
+ * timer while the CPU interrupt mask still indicates interrupt handling.
+ */
+static bool	MFP_GetTimerInfo ( MFP_STRUCT *pMFP , const char **pTimerName , uint32_t *pTimerFreq ,
+		bool bAllowCurrentInterrupt )
+{
+	int	TimerInt = -1;
+	uint32_t TimerClockCycles = 0;
+	static const char * const MainTimerNames[4] = { "A" , "B" , "C" , "D" };
+	static const char * const TTTimerNames[4] = { "TT-A" , "TT-B" , "TT-C" , "TT-D" };
+	const char * const *TimerNames = ( pMFP == pMFP_TT ) ? TTTimerNames : MainTimerNames;
+
+	if ( pMFP->ISRA & MFP_TIMER_A_BIT )
+		TimerInt = MFP_INT_TIMER_A;
+	else if ( pMFP->ISRA & MFP_TIMER_B_BIT )
+		TimerInt = MFP_INT_TIMER_B;
+	else if ( pMFP->ISRB & MFP_TIMER_C_BIT )
+		TimerInt = MFP_INT_TIMER_C;
+	else if ( pMFP->ISRB & MFP_TIMER_D_BIT )
+		TimerInt = MFP_INT_TIMER_D;
+	else if ( bAllowCurrentInterrupt )
+	{
+		switch ( pMFP->Current_Interrupt )
+		{
+			case MFP_INT_TIMER_A:
+			case MFP_INT_TIMER_B:
+			case MFP_INT_TIMER_C:
+			case MFP_INT_TIMER_D:
+				TimerInt = pMFP->Current_Interrupt;
+				break;
+			default:
+				break;
+		}
+	}
+
+	switch ( TimerInt )
+	{
+		case MFP_INT_TIMER_A:
+			*pTimerName = TimerNames[0];
+			TimerClockCycles = pMFP->TimerAClockCycles;
+			break;
+		case MFP_INT_TIMER_B:
+			*pTimerName = TimerNames[1];
+			TimerClockCycles = pMFP->TimerBClockCycles;
+			break;
+		case MFP_INT_TIMER_C:
+			*pTimerName = TimerNames[2];
+			TimerClockCycles = pMFP->TimerCClockCycles;
+			break;
+		case MFP_INT_TIMER_D:
+			*pTimerName = TimerNames[3];
+			TimerClockCycles = pMFP->TimerDClockCycles;
+			break;
+		default:
+			return false;
+	}
+
+	*pTimerFreq = TimerClockCycles ? MachineClocks.MFP_Timer_Freq / TimerClockCycles : 0;
+	return true;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Get information about the timer interrupt routine currently running.
+ */
+bool	MFP_GetCurrentTimerInfo ( const char **pTimerName , uint32_t *pTimerFreq )
+{
+	bool bAllowCurrentInterrupt = ( regs.intmask >= 6 );
+
+	*pTimerName = "";
+	*pTimerFreq = 0;
+
+	if ( Config_IsMachineTT() && MFP_GetTimerInfo ( pMFP_TT , pTimerName , pTimerFreq , false ) )
+		return true;
+
+	if ( MFP_GetTimerInfo ( pMFP_Main , pTimerName , pTimerFreq , false ) )
+		return true;
+
+	if ( Config_IsMachineTT() && MFP_GetTimerInfo ( pMFP_TT , pTimerName , pTimerFreq , bAllowCurrentInterrupt ) )
+		return true;
+
+	return MFP_GetTimerInfo ( pMFP_Main , pTimerName , pTimerFreq , bAllowCurrentInterrupt );
+}
+
+
 
 
 /*-----------------------------------------------------------------------*/

@@ -45,3 +45,5 @@ Debug/*
 .cproject
 .project
 .settings/
+*.csv
+*.zip

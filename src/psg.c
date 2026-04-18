@@ -233,8 +233,8 @@ static FILE *PSG_CaptureGetFile(void)
 	PsgCaptureFile = File_Open(filename, "w");
 	if (PsgCaptureFile)
 	{
-		fprintf(PsgCaptureFile, "# Hatari PSG register capture v0\n");
-		fprintf(PsgCaptureFile, "# clock,reg,value,pc\n");
+		fprintf(PsgCaptureFile, "# Hatari PSG register capture v1\n");
+		fprintf(PsgCaptureFile, "# clock,reg,value,pc,in_timer,timer,timer_freq\n");
 		atexit(PSG_CaptureClose);
 	}
 
@@ -244,12 +244,17 @@ static FILE *PSG_CaptureGetFile(void)
 static void PSG_CaptureWrite(uint64_t clock, uint8_t reg, uint8_t value)
 {
 	FILE *fp = PSG_CaptureGetFile();
+	const char *timer_name;
+	uint32_t timer_freq;
+	bool in_timer;
 
 	if (!fp)
 		return;
 
-	fprintf(fp, "%llu,%u,%u,0x%x\n",
-		(unsigned long long)clock, reg, value, M68000_GetPC());
+	in_timer = MFP_GetCurrentTimerInfo(&timer_name, &timer_freq);
+	fprintf(fp, "%llu,%u,%u,0x%x,%u,%s,%u\n",
+		(unsigned long long)clock, reg, value, M68000_GetPC(),
+		in_timer ? 1 : 0, timer_name, timer_freq);
 }
 
 

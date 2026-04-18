@@ -147,6 +147,7 @@ extern bool	MFP_UpdateNeeded;
 
 extern int	MFP_ConvertCycle_CPU_MFP_TIMER ( int CPU_Cycles );
 extern int	MFP_ConvertCycle_MFP_TIMER_CPU ( int MFP_Cycles );
+extern bool	MFP_GetCurrentTimerInfo ( const char **pTimerName , uint32_t *pTimerFreq );
 
 extern void	MFP_Init ( MFP_STRUCT *pAllMFP );
 extern void	MFP_Reset_All ( void );
